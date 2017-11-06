@@ -71,12 +71,14 @@ def main():
   
   print "\n Provide the file name for upload"
   filename=raw_input().strip()
-  
-  with open(filename, 'r') as f:
+  try: 
+   with open(filename, 'r') as f:
      data=json.load( f)  
-  
+  except:
+   print "can't find the file"
+   continue
   sg_data = data.get('SecurityGroups', [{}])[0]
-  pp(sg_data)
+  #pp(sg_data) #Check the file
   
   print"\nThe Security Group Name: {} Description: {} OLD_VPC_ID: {} OLD_GROUP_ID: {}".format(sg_data['GroupName'], sg_data['Description'], sg_data['VpcId'],sg_data['GroupId'])
  
@@ -93,7 +95,7 @@ def main():
    sgdesc= sg_data['Description']
   else:
    print "\nProvide new value:"
-   sgdesc=raw_input().strip     
+   sgdesc=raw_input().strip()     
   print "\n Please provide the VPC ID for the new group?"
   nvpc_id=raw_input().strip()
   try:
@@ -111,23 +113,35 @@ def main():
     else:
        break
 
-
+  for i in range(len(sg_data['IpPermissionsEgress'])): # check if permit ip any any exists in the outband rule in the file
+   if sg_data['IpPermissionsEgress'][i]['IpProtocol']=='-1' and sg_data['IpPermissionsEgress'][i]['IpRanges'][0]['CidrIp']=='0.0.0.0/0':
+    del sg_data['IpPermissionsEgress'][i]
+  
   try:
 
    data = ec2.authorize_security_group_ingress(
         GroupId=security_group_id,
         IpPermissions=sg_data['IpPermissions'])
-   print('Ingress Successfully Set %s' % data)
-   data = ec2.authorize_security_group_egress(
+   print('Ingress rules Successfully Set HTTPStatusCode  %s' % data['ResponseMetadata']['HTTPStatusCode'])
+   
+   if sg_data['IpPermissionsEgress']:
+    data = ec2.authorize_security_group_egress(
         GroupId=security_group_id,
         IpPermissions=sg_data['IpPermissionsEgress'])
-   print('Egress Successfully Set %s' % data)
+    print('Egress rules Successfully Set HTTPStatusCode %s' % data['ResponseMetadata']['HTTPStatusCode'])
   except ClientError as e:
-    print(e)
-
- print "\nWould you like to try again? y/n"
- check=raw_input()
-
+   print(e)
+  
+  print "\nWould you like to delete default permit any any from the outband rules of your new security group? y/s # In most cases you are going to choose NO!"
+  raw_check=raw_input()
+  if raw_check=='y':
+   ec2.revoke_security_group_egress(GroupId=security_group_id,IpPermissions=[{u'IpProtocol': u'-1',
+                                                u'IpRanges': [{u'CidrIp': u'0.0.0.0/0'}],
+                                                u'Ipv6Ranges': [],
+                                                u'PrefixListIds': [],
+                                                u'UserIdGroupPairs': []}])
+  print "\nWould you like to try again? y/n"
+  check=raw_input()
 
 
 if __name__ == "__main__":
