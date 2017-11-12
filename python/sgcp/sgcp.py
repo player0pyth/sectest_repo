@@ -68,10 +68,6 @@ def main():
   response=ec2.describe_regions()
   awsregions=regions=response['Regions']
   for i in range(len(awsregions)):
-   if n==5:
-    print "Press any key to continue.."
-    aaa=raw_input()
-    n=0
    region=awsregions[i]['RegionName']
    print "\nRegion {:5}".format(region)
    ec2 = regionid(region)
@@ -81,12 +77,16 @@ def main():
    print "\n{:20} {:<30} {:<20} {:<20}".format("Security Group Name:", "Group ID:", "VpcID:", "Description:")
    for i in range(len(secdata)):
     print "{:20} {:<30} {:<20} {:<20}".format(secdata[i]['GroupName'], secdata[i]['GroupId'], secdata[i]['VpcId'], secdata[i]['Description'])
+    if n==20:
+     print "Press Enter to continue.."
+     aaa=raw_input()
+     n=0
     n=n+1
  except ClientError as e:
-   print(e)
- check='y'
+  print(e)
   ### WE ARE GOING TO SELECT THE REGION
  print "\nSelect the region:"
+ check='y'
  region=raw_input()
  checkregion=checkregions(region,awsregions) # checking if the region is within available regions
  if checkregion=='yes':  
@@ -94,9 +94,9 @@ def main():
  else:
   print "Can't find the region, try again"
   sys.exit(1)
- while ( check=='y'):
+ while ( check=='y'):  
   print "\nProvide a group ID to check the rulset"
-  groupid=raw_input()
+  groupid=raw_input() 
   groupid=groupid.strip()
   response=queryaws(ec2,groupid)
   if response=='nogroup':
@@ -124,8 +124,8 @@ def main():
    timestr = time.strftime("%Y%m%d-%H%M%S")
    filename='{}_{}'.format(groupid,timestr) 
    with open(filename, 'w') as f:
-     json.dump(response, f)
-   print "The configuration for {} groupID  was saved to the {} file.\n".format(groupid,filename)
+    json.dump(response, f)
+  print "The configuration for {} groupID  was saved to the {} file.\n".format(groupid,filename)
   print "\nCheck another group? y/n"
   check=raw_input()
  

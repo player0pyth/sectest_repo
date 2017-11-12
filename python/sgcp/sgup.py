@@ -3,9 +3,17 @@ import json
 import time
 from botocore.exceptions import ClientError
 from pprint import pprint as pp
+import sys
 
 
-ec2 = boto3.client('ec2') # Select ec2
+def checkregions(region,awsregions): #check if provided region is part of available regions
+ response='no'
+ for i in range(len(awsregions)):
+  if region==awsregions[i]['RegionName']:
+   response='yes'
+ return response
+
+
 
 def callaws():
  try:
@@ -15,7 +23,23 @@ def callaws():
  return response
 
 
-def queryaws(arg):
+def regionid(region):
+ try:
+  ec2 = boto3.client('ec2', region_name=region)
+ except ClientError as e:
+  print(e)
+ return ec2
+
+def regionid(region):
+ try:
+  ec2 = boto3.client('ec2', region_name=region)
+ except ClientError as e:
+  print(e)
+ return ec2
+
+
+
+def queryaws(ec2,arg):
  try:
     response = ec2.describe_security_groups(GroupIds=[arg]) #Making a call to AWS
  except:   # Checking for access
@@ -28,8 +52,9 @@ def removehttp(response):
  return secdata
 
 
+
 def printrule(rules):
-  for i in range(len(rules)):
+ for i,a in enumerate(rules):
    if rules[i]['IpProtocol'] == '-1':
     ipproto='ALL'
     from_port='N/A'
@@ -40,18 +65,38 @@ def printrule(rules):
     ipproto=rules[i]['IpProtocol']
    if not rules[i]['IpRanges']:
       cidrip=rules[i]['UserIdGroupPairs'][0]['GroupId']
-   elif not rules[i]['IpRanges'][0]['CidrIp']:
-     cidrip='N/A'
+   if rules[i]['IpRanges'] and rules[i]['UserIdGroupPairs']:
+        cidrip=str(rules[i]['IpRanges'][0]['CidrIp'])+' +'+str(rules[i]['UserIdGroupPairs'][0]['GroupId'])
+   elif not rules[i]['IpRanges'] or not rules[i]['IpRanges'][0]['CidrIp']:
+    cidrip='N/A'
    else:
     cidrip=rules[i]['IpRanges'][0]['CidrIp']
    if to_port==from_port:
     print "\n{:20} {:<30} {:<20}".format(ipproto, to_port, cidrip)
    else:
     print "\n{:20} {}-{:<30} {:<20}".format(ipproto,from_port, to_port, cidrip)
-   #a
+
 def main():
  check='y'
- response=callaws()
+ ec2 = boto3.client('ec2') # Select ec2
+ response=ec2.describe_regions()
+ print"Available Regions:\n"
+ awsregions=regions=response['Regions']
+ for i,a in enumerate(awsregions):
+  region=awsregions[i]['RegionName']
+  sys.stdout.write(region)
+  sys.stdout.write(',')
+  sys.stdout.write(' ')
+ ### WE ARE GOING TO SELECT THE REGION
+ print "\nSelect the region:"
+ region=raw_input()
+ checkregion=checkregions(region,awsregions) # checking if the region is within available regions
+ if checkregion=='yes':  
+  ec2 = regionid(region)
+ else:
+  print "Can't find the region, try again"
+  sys.exit(1)
+ response=ec2.describe_security_groups() # describe security groups
  secdata=removehttp(response) # stripping data to Sec groups only
  print "\nAvailable security groups:"
  print "\n{:20} {:<30} {:<20} {:<20}".format("Security Group Name:", "Group ID:", "VpcID:", "Description:")
@@ -116,7 +161,12 @@ def main():
   for i in range(len(sg_data['IpPermissionsEgress'])): # check if permit ip any any exists in the outband rule in the file
    if sg_data['IpPermissionsEgress'][i]['IpProtocol']=='-1' and sg_data['IpPermissionsEgress'][i]['IpRanges'][0]['CidrIp']=='0.0.0.0/0':
     del sg_data['IpPermissionsEgress'][i]
-  
+   else:
+    ec2.revoke_security_group_egress(GroupId=security_group_id,IpPermissions=[{u'IpProtocol': u'-1',
+                                                u'IpRanges': [{u'CidrIp': u'0.0.0.0/0'}],
+                                                u'Ipv6Ranges': [],
+                                                u'PrefixListIds': [],
+                                                u'UserIdGroupPairs': []}])
   try:
 
    data = ec2.authorize_security_group_ingress(
@@ -132,14 +182,6 @@ def main():
   except ClientError as e:
    print(e)
   
-  print "\nWould you like to delete default permit any any from the outband rules of your new security group? y/s # In most cases you are going to choose NO!"
-  raw_check=raw_input()
-  if raw_check=='y':
-   ec2.revoke_security_group_egress(GroupId=security_group_id,IpPermissions=[{u'IpProtocol': u'-1',
-                                                u'IpRanges': [{u'CidrIp': u'0.0.0.0/0'}],
-                                                u'Ipv6Ranges': [],
-                                                u'PrefixListIds': [],
-                                                u'UserIdGroupPairs': []}])
   print "\nWould you like to try again? y/n"
   check=raw_input()
 
