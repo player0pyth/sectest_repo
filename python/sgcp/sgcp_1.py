@@ -72,7 +72,7 @@ def main():
   print "\nInbound Rules:\n"
   print "\n{:20} {:<30} {:<20}".format("Protocol:", "Port Range:", "Source:")
  
- 
+ #da
   printrule(inboundrules)
 
   print "\nOutbound Rules:\n"
