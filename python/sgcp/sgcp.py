@@ -40,6 +40,8 @@ def printrule(rules):
     ipproto=rules[i]['IpProtocol']
    if not rules[i]['IpRanges']:
       cidrip=rules[i]['UserIdGroupPairs'][0]['GroupId']
+   if rules[i]['IpRanges'] and rules[i]['UserIdGroupPairs']:
+        cidrip=str(rules[i]['IpRanges'][0]['CidrIp'])+' +'+str(rules[i]['UserIdGroupPairs'][0]['GroupId'])
    elif not rules[i]['IpRanges'][0]['CidrIp']:
      cidrip='N/A'
    else:
@@ -66,7 +68,9 @@ def main():
   if response=='nogroup':
    continue 
   secdata=removehttp(response) 
+  #pp(secdata)
   print "\n{:20} {:<30} {:<20} {:<20}".format("Security Group Name:", "Group ID:", "VpcID:", "Description:")
+  
   inboundrules=secdata[0]['IpPermissions']
   outboundrules=secdata[0]['IpPermissionsEgress']
   print "\nInbound Rules:\n"
